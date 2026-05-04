@@ -1,4 +1,4 @@
-# 🔗 Blockchain Evidence Authentication System
+# Cyber Forensic Evidence Management & Authentication System using Blockchain
 
 > A tamper-proof, decentralized digital evidence management platform built for law enforcement and investigative agencies — powered by a custom blockchain, perceptual hashing, and IPFS storage.
 
