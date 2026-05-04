@@ -1,0 +1,22 @@
+{
+  "OFF1234567": {
+    "name": "Sachin Dore",
+    "role": "Investigator",
+    "password_hash": "pbkdf2:sha256:600000$oEY7YSb7p6fAYax7$620dfc26e7770050b42df6a5bf64b6db3fa01a30a5169e9c055a06aca1eab48d"
+  },
+  "OFF2345678": {
+    "name": "Priya Sharma",
+    "role": "Investigator",
+    "password_hash": "pbkdf2:sha256:600000$JgxbZdrcRYHHdPAq$d7707ea505cc778e0aa4df6f7c5cd486e985cf7f62363211b43981f5710ff5cb"
+  },
+  "OFF3456789": {
+    "name": "Rohit Kumar",
+    "role": "Officer",
+    "password_hash": "pbkdf2:sha256:600000$eQYc3u48Sm1NGK69$91dd1413323e8de7d3b63808759abc266c1ca5d9c4216c3659bd00a9e156ef8b"
+  },
+  "OFF4567890": {
+    "name": "Anjali Mehta",
+    "role": "Officer",
+    "password_hash": "pbkdf2:sha256:600000$SW3baqQ7ly2R4GLf$01a0565a7d67329ccd42cb8b39fc7a6644a1f3fd9ae2983ba1e351f9820265ea"
+  }
+}

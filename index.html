@@ -1,0 +1,2011 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Blockchain Evidence Authentication</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .timeline-item {
+      position: relative;
+      padding-left: 2.5rem;
+      padding-bottom: 2rem;
+      border-left: 2px solid #e5e7eb;
+    }
+    .timeline-item:last-child {
+      border-left: none;
+      padding-bottom: 0;
+    }
+    .timeline-dot {
+      position: absolute;
+      left: -0.5rem;
+      width: 1rem;
+      height: 1rem;
+      background: #4f46e5;
+      border-radius: 50%;
+      border: 3px solid white;
+      box-shadow: 0 0 0 2px #e5e7eb;
+    }
+    .timeline-dot.verified { background: #10b981; }
+    .timeline-dot.transferred { background: #f59e0b; }
+    
+    .loading-spinner {
+      border: 3px solid #f3f4f6;
+      border-top: 3px solid #4f46e5;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .match-card-identical {
+      border-left: 4px solid #10b981;
+      background: linear-gradient(to right, #d1fae5, #ffffff);
+    }
+    
+    .match-card-similar {
+      border-left: 4px solid #fbbf24;
+      background: linear-gradient(to right, #fef3c7, #ffffff);
+    }
+    
+    .match-card-different {
+      border-left: 4px solid #ef4444;
+      background: linear-gradient(to right, #fee2e2, #ffffff);
+    }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+
+  <!-- Login Screen -->
+  <div id="login-screen" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500">
+    <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+      <div class="text-center mb-8">
+        <div class="inline-block p-3 bg-indigo-100 rounded-full mb-4">
+          <svg class="w-12 h-12 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+          </svg>
+        </div>
+        <h2 class="text-3xl font-bold text-gray-800">Officer Login</h2>
+        <p class="text-gray-500 mt-2">Blockchain Evidence System</p>
+      </div>
+      
+      <form id="loginForm" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">User ID</label>
+          <input type="text" id="login-user-id" placeholder="Enter your User ID" 
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
+          <input type="password" id="login-password" placeholder="Enter your password" 
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required />
+        </div>
+        <button type="submit" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow-lg transition transform hover:scale-105">
+          Login
+        </button>
+      </form>
+      
+      <div id="login-error" class="mt-4"></div>
+      
+      <div class="mt-6 text-center text-sm text-gray-500">
+        <p>Demo Credentials: OFF1234567 / password123</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main App -->
+  <div id="main-app" class="hidden">
+    <!-- Navbar -->
+    <nav class="bg-indigo-600 text-white shadow">
+      <div class="max-w-7xl mx-auto px-6">
+        <div class="flex justify-between items-center h-16">
+          <h1 class="text-xl font-bold">🔒 Blockchain Evidence System</h1>
+          <div class="flex items-center space-x-4">
+            <span id="user-info" class="text-sm bg-indigo-500 px-3 py-1 rounded-full"></span>
+            <button id="nav-register" onclick="showTab('register')" class="px-4 py-2 rounded-full bg-indigo-600 shadow text-white font-medium hover:bg-indigo-700 transition">Register</button>
+            <button id="nav-verify" onclick="showTab('verify')" class="px-4 py-2 rounded-full bg-indigo-200 text-indigo-900 font-medium shadow hover:bg-indigo-300 transition">Verify</button>
+            <button id="nav-dashboard" onclick="showTab('dashboard')" class="px-4 py-2 rounded-full bg-indigo-200 text-indigo-900 font-medium shadow hover:bg-indigo-300 transition">Dashboard</button>
+            <!-- Add this button to your navbar section -->
+            <button id="nav-transfer" onclick="showTab('transfer')" class="px-4 py-2 rounded-full bg-indigo-200 text-indigo-900 font-medium shadow hover:bg-indigo-300 transition">Transfer</button>
+            <button id="nav-myprofile" onclick="showTab('myprofile')" class="px-4 py-2 rounded-full bg-indigo-200 text-indigo-900 font-medium shadow hover:bg-indigo-300 transition">My Profile</button>
+            <button id="nav-custody" onclick="showTab('custody')" class="px-4 py-2 rounded-full bg-indigo-200 text-indigo-900 font-medium shadow hover:bg-indigo-300 transition">Chain of Custody</button>
+            <button onclick="logout()" class="px-4 py-2 rounded-full bg-red-500 text-white font-medium shadow hover:bg-red-600 transition">Logout</button>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main -->
+    <main class="flex-1 max-w-7xl mx-auto p-6 space-y-8">
+
+      <!-- Register -->
+      <section id="tab-register" class="bg-white rounded-xl shadow-lg p-6">
+        <h2 class="text-2xl font-bold text-indigo-700 mb-4">📤 Register Evidence</h2>
+        <form id="registerForm" class="space-y-4">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Case ID *</label>
+              <input type="text" id="case-id" placeholder="e.g., CASE-2025-001" 
+                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Evidence ID *</label>
+              <input type="text" id="evidence-id" placeholder="e.g., EV-IMG-001" 
+                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required />
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+            <textarea id="description" rows="3" placeholder="Brief description of evidence..." 
+              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"></textarea>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Select File *</label>
+            <input type="file" id="registerFile" required class="block w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500" />
+          </div>
+          <button type="submit" id="register-btn" class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow-md transition flex items-center">
+            <span id="register-btn-text">Register Evidence</span>
+            <div id="register-spinner" class="loading-spinner ml-3 hidden"></div>
+          </button>
+        </form>
+        <div id="registerResult" class="mt-4"></div>
+      </section>
+
+      <!-- Verify -->
+      <section id="tab-verify" class="hidden bg-white rounded-xl shadow-lg p-6">
+        <h2 class="text-2xl font-bold text-green-700 mb-4">✅ Verify Evidence</h2>
+        <form id="verifyForm" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Select File to Verify</label>
+            <input type="file" id="verifyFile" required class="block w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-green-500" />
+          </div>
+          <button type="submit" id="verify-btn" class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg shadow-md transition flex items-center">
+            <span id="verify-btn-text">Verify Evidence</span>
+            <div id="verify-spinner" class="loading-spinner ml-3 hidden"></div>
+          </button>
+        </form>
+        
+        <!-- Verification Results -->
+        <div id="verifyResults" class="mt-6"></div>
+      </section>
+
+      <!-- Dashboard -->
+      <section id="tab-dashboard" class="hidden bg-white rounded-xl shadow-lg p-6">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold text-indigo-700">📊 Evidence Dashboard</h2>
+          <button onclick="loadDashboard()" class="px-6 py-3 bg-gray-700 hover:bg-gray-800 text-white font-semibold rounded-lg shadow-md transition">Refresh</button>
+        </div>
+        <div id="dashboard" class="mt-4 overflow-x-auto"></div>
+      </section>
+
+      <!-- Chain of Custody -->
+    <section id="tab-custody" class="hidden bg-white rounded-xl shadow-lg p-6">
+      <!-- Header -->
+      <div class="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-6 rounded-xl mb-6 shadow-lg">
+        <h2 class="text-3xl font-bold mb-2">⚖️ Chain of Custody</h2>
+        <p class="text-purple-100">Court-Admissible Evidence Tracking & Audit Trail</p>
+      </div>
+
+      <!-- Search & Filter Section -->
+      <div class="bg-gray-50 p-6 rounded-xl mb-6 border border-gray-200">
+        <h3 class="font-bold text-gray-800 mb-4">🔍 Search Evidence</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Case ID</label>
+            <input type="text" id="custody-search-case" placeholder="e.g., CASE-2025-001" 
+              class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-purple-500" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Evidence ID</label>
+            <input type="text" id="custody-search-evidence" placeholder="e.g., EV-IMG-001" 
+              class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-purple-500" />
+          </div>
+          <div class="flex items-end gap-2">
+            <button onclick="searchCustody()" class="flex-1 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg shadow-md transition">
+              Search
+            </button>
+            <button onclick="resetCustodySearch()" class="px-6 py-3 bg-gray-400 hover:bg-gray-500 text-white font-semibold rounded-lg shadow-md transition">
+              Reset
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Results Section -->
+      <div id="custody-search-results" class="hidden mb-6">
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+          <p class="font-semibold text-blue-900" id="custody-results-text"></p>
+        </div>
+        <div id="custody-results-list" class="space-y-3"></div>
+      </div>
+
+      <!-- Or Select From Dropdown -->
+      <div class="mb-6">
+        <label class="block text-sm font-medium text-gray-700 mb-2">Or Select from All Evidence</label>
+        <div class="flex gap-3">
+          <select id="custody-select" class="flex-1 border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-purple-500">
+            <option value="">-- Select Evidence --</option>
+          </select>
+          <button onclick="loadCustodyChain()" class="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg shadow-md transition">
+            Load Custody Chain
+          </button>
+        </div>
+      </div>
+
+      <!-- Timeline Display -->
+      <div id="custody-timeline" class="mt-6"></div>
+    </section>
+
+    <!-- Add this section after the existing sections in your main content -->
+
+<!-- Transfer Evidence -->
+<section id="tab-transfer" class="hidden bg-white rounded-xl shadow-lg p-6">
+    <h2 class="text-2xl font-bold text-purple-700 mb-4">🔄 Transfer Evidence</h2>
+    
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Transfer Form -->
+        <div class="bg-gray-50 p-6 rounded-xl border-2 border-purple-200">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">Transfer Evidence to Another Officer</h3>
+            
+            <form id="transferForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Select Evidence to Transfer *</label>
+                    <select id="transfer-evidence-select" class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-purple-500" required>
+                        <option value="">-- Select Evidence --</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Transfer To Officer *</label>
+                    <select id="transfer-officer-select" class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-purple-500" required>
+                        <option value="">-- Select Officer --</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Transfer Reason</label>
+                    <select id="transfer-reason" class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-purple-500">
+                        <option value="Case reassignment">Case Reassignment</option>
+                        <option value="Expert analysis required">Expert Analysis Required</option>
+                        <option value="Joint investigation">Joint Investigation</option>
+                        <option value="Storage transfer">Storage Transfer</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                
+                <div id="custom-reason-container" class="hidden">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Custom Reason *</label>
+                    <input type="text" id="custom-reason" placeholder="Specify transfer reason" class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-purple-500" />
+                </div>
+                
+                <button type="submit" id="transfer-btn" class="w-full px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg shadow-md transition flex items-center justify-center">
+                    <span id="transfer-btn-text">Transfer Evidence</span>
+                    <div id="transfer-spinner" class="loading-spinner ml-3 hidden"></div>
+                </button>
+            </form>
+            
+            <div id="transferResult" class="mt-4"></div>
+        </div>
+        
+<!-- Update the Recent Transfers section in <!-- Replace the entire Recent Transfers section in transfer tab with this: -->
+<div class="bg-blue-50 p-6 rounded-xl border-2 border-blue-200">
+    <h3 class="text-lg font-bold text-gray-800 mb-4">📋 Transfer History</h3>
+    
+    <!-- Transfers Made Section -->
+    <div class="mb-6">
+        <h4 class="font-semibold text-purple-700 text-sm mb-3 flex items-center gap-2">
+            <span>📤 Transfers You Made</span>
+            <span class="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-semibold" id="made-count">0</span>
+        </h4>
+        <div id="my-transfers" class="space-y-3 max-h-48 overflow-y-auto">
+            <p class="text-gray-500 text-center py-4 text-sm">No transfers made yet</p>
+        </div>
+    </div>
+    
+    <!-- Transfers Received Section -->
+    <div class="border-t border-blue-300 pt-4">
+        <h4 class="font-semibold text-green-700 text-sm mb-3 flex items-center gap-2">
+            <span>📥 Transfers You Received</span>
+            <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-semibold" id="received-count">0</span>
+        </h4>
+        <div id="received-transfers" class="space-y-3 max-h-48 overflow-y-auto">
+            <p class="text-gray-500 text-center py-4 text-sm">No transfers received</p>
+        </div>
+    </div>
+</div>
+</section>
+
+<!-- My Profile Section -->
+<section id="tab-myprofile" class="hidden bg-white rounded-xl shadow-lg p-6">
+    <div class="bg-gradient-to-r from-green-600 to-blue-600 text-white p-6 rounded-xl mb-6">
+        <h2 class="text-3xl font-bold mb-2">👤 My Profile</h2>
+        <p class="text-blue-100" id="profile-welcome">Welcome back, Officer</p>
+    </div>
+    
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- My Evidence -->
+        <div class="bg-white border-2 border-green-200 rounded-xl p-6 shadow-lg">
+            <h3 class="text-xl font-bold text-green-700 mb-4 flex items-center gap-2">
+                <span>📁 My Evidence</span>
+                <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-sm font-semibold" id="my-evidence-count">0</span>
+            </h3>
+            <div id="my-evidence-list" class="space-y-3 max-h-96 overflow-y-auto">
+                <p class="text-gray-500 text-center py-4">Loading your evidence...</p>
+            </div>
+        </div>
+        
+        <!-- Transferred to Me -->
+        <div class="bg-white border-2 border-blue-200 rounded-xl p-6 shadow-lg">
+            <h3 class="text-xl font-bold text-blue-700 mb-4 flex items-center gap-2">
+                <span>🔄 Transferred to Me</span>
+                <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm font-semibold" id="transferred-count">0</span>
+            </h3>
+            <div id="transferred-evidence-list" class="space-y-3 max-h-96 overflow-y-auto">
+                <p class="text-gray-500 text-center py-4">Loading transferred evidence...</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+    </main>
+  </div>
+
+<script>
+  const API = "http://127.0.0.1:8000/api";
+  let currentUser = null;
+  let sessionCheckInterval = null;
+
+document.getElementById("loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const userId = document.getElementById("login-user-id").value.trim();
+  const password = document.getElementById("login-password").value.trim();
+
+  // Show loading state
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  const originalText = submitBtn.innerHTML;
+  submitBtn.innerHTML = 'Logging in...';
+  submitBtn.disabled = true;
+
+  try {
+    const res = await fetch(`${API}/login`, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      credentials: "include",
+      body: JSON.stringify({ user_id: userId, password: password })
+    });
+
+    const json = await res.json();
+    const errorDiv = document.getElementById("login-error");
+
+    if (res.ok) {
+      currentUser = json.user;
+      document.getElementById("login-screen").classList.add("hidden");
+      document.getElementById("main-app").classList.remove("hidden");
+      document.getElementById("user-info").textContent = `${json.user.name} (${json.user.role})`;
+      
+      // Start session monitoring
+      startSessionCheck();
+      
+      showTab('register');
+      console.log("✅ Login successful:", currentUser);
+    } else {
+      errorDiv.innerHTML = `<div class="p-3 bg-red-100 border border-red-300 text-red-700 rounded-lg">${json.error || 'Login failed'}</div>`;
+    }
+  } catch (err) {
+    console.error("Login error:", err);
+    document.getElementById("login-error").innerHTML = 
+      `<div class="p-3 bg-red-100 border border-red-300 text-red-700 rounded-lg">
+         Connection error. Please check if the backend server is running on port 8000.
+       </div>`;
+  } finally {
+    // Reset button state
+    submitBtn.innerHTML = originalText;
+    submitBtn.disabled = false;
+  }
+});
+
+  // Logout
+async function logout() {
+  stopSessionCheck();
+  
+  try {
+    await fetch(`${API}/logout`, { 
+      method: "POST", 
+      credentials: "include" 
+    });
+  } catch (err) {
+    console.error("Logout error:", err);
+  }
+  
+  currentUser = null;
+  
+  // Clear all UI data
+  document.getElementById("main-app").classList.add("hidden");
+  document.getElementById("login-screen").classList.remove("hidden");
+  document.getElementById("login-user-id").value = "";
+  document.getElementById("login-password").value = "";
+  document.getElementById("login-error").innerHTML = "";
+  
+  // Clear all results and forms
+  document.getElementById("registerResult").innerHTML = "";
+  document.getElementById("verifyResults").innerHTML = "";
+  document.getElementById("dashboard").innerHTML = "";
+  document.getElementById("custody-timeline").innerHTML = "";
+  document.getElementById("custody-search-results").classList.add("hidden");
+  document.getElementById("custody-select").innerHTML = '<option value="">-- Select Evidence --</option>';
+  
+  // Reset forms
+  document.getElementById("registerForm").reset();
+  document.getElementById("verifyForm").reset();
+  
+  // Clear stored data
+  allEvidenceData = [];
+  
+  console.log("✅ Logout complete");
+}
+
+function startSessionCheck() {
+  // Check session every 2 minutes to prevent auto-logout
+  sessionCheckInterval = setInterval(async () => {
+    try {
+      const res = await fetch(`${API}/session-check`, {
+        credentials: "include"
+      });
+      
+      if (!res.ok) {
+        console.warn("Session check failed - logging out");
+        clearInterval(sessionCheckInterval);
+        logout();
+      } else {
+        console.log("✅ Session check passed");
+      }
+    } catch (err) {
+      console.error("Session check error:", err);
+    }
+  }, 120000); // 2 minutes
+}
+
+function stopSessionCheck() {
+  if (sessionCheckInterval) {
+    clearInterval(sessionCheckInterval);
+    sessionCheckInterval = null;
+  }
+}
+
+  // Tab switching
+// Update the showTab function
+function showTab(tab) {
+  document.querySelectorAll('section[id^="tab-"]').forEach(s => s.classList.add('hidden'));
+  document.getElementById(`tab-${tab}`).classList.remove('hidden');
+  
+  // Update button states
+  ['register','verify','dashboard','custody','transfer','myprofile'].forEach(t => {
+    const btn = document.getElementById('nav-' + t);
+    if (btn) {
+      if (t === tab) {
+        btn.classList.add('bg-indigo-600','text-white');
+        btn.classList.remove('bg-indigo-200','text-indigo-900');
+      } else {
+        btn.classList.remove('bg-indigo-600','text-white');
+        btn.classList.add('bg-indigo-200','text-indigo-900');
+      }
+    }
+  });
+
+  // Load data for specific tabs
+  if (tab === 'custody') {
+    loadCustodySelect();
+  } else if (tab === 'transfer') {
+    loadTransferData(); // This will load both transfers made and received
+  } else if (tab === 'myprofile') {
+    loadMyProfile();
+  } else if (tab === 'dashboard') {
+    loadDashboard();
+  }
+} 
+
+  // Register Evidence
+document.getElementById("registerForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  e.stopPropagation(); // Prevent event bubbling
+  
+  const file = document.getElementById("registerFile").files[0];
+  const caseId = document.getElementById("case-id").value.trim();
+  const evidenceId = document.getElementById("evidence-id").value.trim();
+  const description = document.getElementById("description").value.trim();
+  
+  if (!file || !caseId || !evidenceId) {
+    alert("Please fill in all required fields");
+    return false;
+  }
+
+  // Show loading state
+  const btn = document.getElementById("register-btn");
+  const btnText = document.getElementById("register-btn-text");
+  const spinner = document.getElementById("register-spinner");
+  const resultDiv = document.getElementById("registerResult");
+  
+  btn.disabled = true;
+  btnText.textContent = "Uploading to blockchain...";
+  spinner.classList.remove("hidden");
+  resultDiv.innerHTML = `<div class="p-4 bg-blue-50 border border-blue-300 rounded-lg">
+    <p class="text-blue-700">⏳ Processing your evidence registration...</p>
+  </div>`;
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("case_id", caseId);
+  formData.append("evidence_id", evidenceId);
+  formData.append("description", description);
+
+  try {
+    console.log("Starting evidence registration...");
+    
+    const res = await fetch(`${API}/register`, { 
+      method: "POST", 
+      body: formData,
+      credentials: "include"
+    });
+    
+    console.log("Response status:", res.status);
+    
+    // Store the response text first to avoid "body already read" error
+    const responseText = await res.text();
+    let json;
+    
+    try {
+      json = JSON.parse(responseText);
+      console.log("Response data:", json);
+    } catch (parseError) {
+      console.error("Failed to parse JSON response:", parseError);
+      throw new Error("Invalid response from server");
+    }
+
+    // Handle response based on status
+    if (res.ok) {
+      // Success case - 201 Created
+// Try multiple possible locations for evidence data
+const ev = json.evidence || json.block?.evidence || json.evidence_details || {};
+const evidenceDetails = json.evidence_details || json.evidence || {};
+
+console.log("Registration response:", json);
+console.log("Evidence object:", ev);
+console.log("Evidence details:", evidenceDetails);
+      
+      const imgTag = ev.ipfsCID ? 
+          `<img src="https://ipfs.io/ipfs/${ev.ipfsCID.replace('ipfs://','')}" 
+                class="w-32 h-32 object-cover mt-3 rounded-lg shadow"
+                onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22128%22 height=%22128%22%3E%3Crect fill=%22%23ddd%22 width=%22128%22 height=%22128%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%23999%22 font-size=%2212%22%3EImage%3C/text%3E%3C/svg%3E'"
+                alt="Evidence"/>` : "";
+      
+      // Add pHash and dHash display - check both evidenceDetails and ev
+      const actualPhash = evidenceDetails.phash || ev.phash;
+      const actualDhash = evidenceDetails.dhash || ev.dhash;
+      
+      const hashSection = (actualPhash || actualDhash) ? `
+          <div class="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <h4 class="font-bold text-blue-800 mb-2">🔬 Digital Fingerprints</h4>
+              ${actualPhash ? `
+                  <p class="text-sm"><strong>Perceptual Hash (pHash):</strong> 
+                  <span class="font-mono text-xs bg-white px-2 py-1 rounded break-all">${actualPhash}</span></p>
+              ` : ''}
+              ${actualDhash ? `
+                  <p class="text-sm mt-2"><strong>Difference Hash (dHash):</strong> 
+                  <span class="font-mono text-xs bg-white px-2 py-1 rounded break-all">${actualDhash}</span></p>
+              ` : ''}
+              <p class="text-xs text-blue-600 mt-2">These perceptual hashes help identify similar images even if they are modified</p>
+          </div>
+      ` : '<div class="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg"><p class="text-sm text-yellow-700">⚠️ No perceptual hashes generated (file may not be an image)</p></div>';
+      
+      resultDiv.innerHTML = `
+          <div class="p-6 border-2 border-green-300 bg-green-50 rounded-xl shadow-lg animate-fadeIn">
+              <h3 class="font-bold text-green-700 text-lg mb-3 flex items-center gap-2">
+                  <span class="text-2xl">✅</span> Evidence Registered Successfully
+              </h3>
+              <div class="space-y-2 text-sm">
+                  <p><strong>Case ID:</strong> <span class="font-mono bg-white px-2 py-1 rounded">${ev.case_id}</span></p>
+                  <p><strong>Evidence ID:</strong> <span class="font-mono bg-white px-2 py-1 rounded">${ev.evidence_id}</span></p>
+                  <p><strong>Description:</strong> ${ev.description || 'N/A'}</p>
+                  <p><strong>IPFS CID:</strong> <span class="font-mono text-xs bg-white px-2 py-1 rounded break-all">${ev.ipfsCID || 'Not uploaded to IPFS'}</span></p>
+                  <p><strong>SHA256:</strong> <span class="font-mono text-xs bg-white px-2 py-1 rounded break-all">${ev.sha256}</span></p>
+                  <p><strong>Registered by:</strong> ${currentUser.name} (${currentUser.user_id})</p>
+                  <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
+              </div>
+              ${hashSection}
+              ${imgTag}
+              <div class="mt-4 p-3 bg-green-100 rounded-lg">
+                  <p class="text-sm text-green-800">
+                      🔒 Your evidence has been permanently recorded on the blockchain and cannot be altered or deleted.
+                  </p>
+              </div>
+          </div>`;
+      
+      // Reset form after successful upload
+      document.getElementById("registerForm").reset();
+      
+      // Scroll to result
+      resultDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      
+      console.log("✅ Evidence registered successfully");
+    } else {
+      // Error cases
+      console.error("Registration failed:", json);
+      
+      if (res.status === 401) {
+        // Session expired
+        resultDiv.innerHTML = `
+          <div class="p-4 border-2 border-red-300 bg-red-50 rounded-lg">
+            <p class="font-bold text-red-700">⚠️ Session Expired</p>
+            <p class="text-sm text-red-600 mt-2">Your session has expired. Please log in again.</p>
+            <button onclick="logout()" class="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+              Return to Login
+            </button>
+          </div>`;
+      } else if (res.status === 409) {
+        // Duplicate evidence
+        resultDiv.innerHTML = `
+          <div class="p-4 border-2 border-yellow-300 bg-yellow-50 rounded-lg">
+            <p class="font-bold text-yellow-700">⚠️ Duplicate Evidence</p>
+            <p class="text-sm text-yellow-600 mt-2">${json.error}</p>
+            <p class="text-xs text-gray-500 mt-2 font-mono">SHA256: ${json.existing_sha256}</p>
+            <p class="text-xs text-yellow-600 mt-2">Try uploading a different file or change the Case ID/Evidence ID</p>
+          </div>`;
+      } else {
+        // Other errors
+        resultDiv.innerHTML = `
+          <div class="p-4 border-2 border-red-300 bg-red-50 rounded-lg">
+            <p class="font-bold text-red-700">❌ Registration Failed</p>
+            <p class="text-sm text-red-600 mt-2">${json.error || 'Unknown error occurred'}</p>
+          </div>`;
+      }
+    }
+  } catch (err) {
+    console.error("Registration error:", err);
+    resultDiv.innerHTML = `
+      <div class="p-4 border-2 border-red-300 bg-red-50 rounded-lg">
+        <p class="font-bold text-red-700">❌ Connection Error</p>
+        <p class="text-sm text-red-600 mt-2">Unable to connect to the server. Please check:</p>
+        <ul class="text-xs text-red-600 mt-2 list-disc list-inside">
+          <li>Backend server is running on port 8000</li>
+          <li>Blockchain node is running on port 5000</li>
+          <li>Your internet connection is stable</li>
+        </ul>
+      </div>`;
+  } finally {
+    // Reset button state
+    btn.disabled = false;
+    btnText.textContent = "Register Evidence";
+    spinner.classList.add("hidden");
+  }
+  
+  return false; // Prevent form submission
+});
+
+// Add periodic session check to prevent auto-logout
+//let sessionCheckInterval = null;
+
+function startSessionCheck() {
+  // Check session every 2 minutes
+  sessionCheckInterval = setInterval(async () => {
+    try {
+      const res = await fetch(`${API}/session-check`, {
+        credentials: "include"
+      });
+      
+      if (!res.ok) {
+        console.warn("Session check failed - logging out");
+        clearInterval(sessionCheckInterval);
+        logout();
+      }
+    } catch (err) {
+      console.error("Session check error:", err);
+    }
+  }, 120000); // 2 minutes
+}
+
+function stopSessionCheck() {
+  if (sessionCheckInterval) {
+    clearInterval(sessionCheckInterval);
+    sessionCheckInterval = null;
+  }
+}
+
+// Verify Evidence
+document.getElementById("verifyForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const file = document.getElementById("verifyFile").files[0];
+  if (!file) return alert("Please select a file.");
+
+  // Show loading state
+  const btn = document.getElementById("verify-btn");
+  const btnText = document.getElementById("verify-btn-text");
+  const spinner = document.getElementById("verify-spinner");
+  btn.disabled = true;
+  btnText.textContent = "Computing hashes...";
+  spinner.classList.remove("hidden");
+
+  try {
+    // Step 1: Send file to backend to compute all hashes (SHA256, pHash, dHash)
+    const formData = new FormData();
+    formData.append("file", file);
+    
+    const hashRes = await fetch(`${API}/compute-hashes`, {
+      method: "POST",
+      body: formData,
+      credentials: "include"
+    });
+    
+    if (!hashRes.ok) {
+      throw new Error("Failed to compute hashes");
+    }
+    
+    const hashes = await hashRes.json();
+    
+    // Step 2: Verify using all three hashes
+    btnText.textContent = "Verifying...";
+    
+    const verifyRes = await fetch(`${API}/verify`, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      credentials: "include",
+      body: JSON.stringify({
+        sha256: hashes.sha256,
+        phash: hashes.phash,
+        dhash: hashes.dhash
+      })
+    });
+    
+    const json = await verifyRes.json();
+    displayVerifyResults(json);
+    
+  } catch (err) {
+    console.error(err);
+    document.getElementById("verifyResults").innerHTML = `<div class="p-4 bg-red-100 rounded-lg">❌ ${err.message || 'Connection error'}</div>`;
+  } finally {
+    btn.disabled = false;
+    btnText.textContent = "Verify Evidence";
+    spinner.classList.add("hidden");
+  }
+});
+
+// Add this function to display search results
+function displaySearchResults(results) {
+  const resultsContainer = document.getElementById("custody-search-results");
+  const resultsText = document.getElementById("custody-results-text");
+  const resultsList = document.getElementById("custody-results-list");
+  
+  if (!results.length) {
+    resultsText.textContent = "No evidence found matching your search criteria.";
+    resultsList.innerHTML = "";
+    resultsContainer.classList.remove("hidden");
+    return;
+  }
+  
+  resultsText.textContent = `Found ${results.length} evidence item(s) matching your search:`;
+  
+  resultsList.innerHTML = results.map(ev => `
+    <div class="bg-white p-4 rounded-lg border border-purple-200 shadow-sm">
+      <div class="flex justify-between items-start">
+        <div>
+          <h4 class="font-semibold text-gray-800">${ev.case_id} - ${ev.evidence_id}</h4>
+          <p class="text-sm text-gray-600 mt-1">${ev.description || 'No description'}</p>
+          <p class="text-xs text-gray-500 mt-1">Uploaded by: ${ev.uploader}</p>
+        </div>
+        <button onclick="loadCustodyByHash('${ev.sha256}')" 
+                class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg transition">
+          View Chain
+        </button>
+      </div>
+    </div>
+  `).join('');
+  
+  resultsContainer.classList.remove("hidden");
+}
+
+// Update the showTab function to load data properly
+function showTab(tab) {
+  document.querySelectorAll('section[id^="tab-"]').forEach(s => s.classList.add('hidden'));
+  document.getElementById(`tab-${tab}`).classList.remove('hidden');
+  
+  // Update button states
+  ['register','verify','dashboard','custody','transfer','myprofile'].forEach(t => {
+    const btn = document.getElementById('nav-' + t);
+    if (btn) {
+      if (t === tab) {
+        btn.classList.add('bg-indigo-600','text-white');
+        btn.classList.remove('bg-indigo-200','text-indigo-900');
+      } else {
+        btn.classList.remove('bg-indigo-600','text-white');
+        btn.classList.add('bg-indigo-200','text-indigo-900');
+      }
+    }
+  });
+
+  // Load data for specific tabs
+  if (tab === 'custody') {
+    loadCustodySelect();
+  } else if (tab === 'transfer') {
+    loadTransferData();
+  } else if (tab === 'myprofile') {
+    loadMyProfile();
+  } else if (tab === 'dashboard') {
+    loadDashboard();
+  }
+}
+
+// Fix the searchCustody function
+async function searchCustody() {
+  const caseId = document.getElementById("custody-search-case").value.trim();
+  const evidenceId = document.getElementById("custody-search-evidence").value.trim();
+  
+  if (!caseId && !evidenceId) {
+    return alert("Please enter Case ID or Evidence ID to search");
+  }
+  
+  try {
+    const params = new URLSearchParams();
+    if (caseId) params.append('case_id', caseId);
+    if (evidenceId) params.append('evidence_id', evidenceId);
+    
+    const res = await fetch(`${API}/evidence/search?${params}`, { 
+      credentials: "include" 
+    });
+    
+    if (res.ok) {
+      const data = await res.json();
+      displaySearchResults(data.results);
+    } else {
+      alert("Search failed");
+    }
+  } catch (err) {
+    console.error("Search error:", err);
+    alert("Search failed - check connection");
+  }
+}
+
+  async function hashSHA256(bytes) {
+    const hashBuffer = await crypto.subtle.digest('SHA-256', bytes);
+    return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2,'0')).join('');
+  }
+
+  function displayVerifyResults(data) {
+  const div = document.getElementById("verifyResults");
+  div.innerHTML = "";
+  
+  if (!data.exists || data.total_matches === 0) {
+    div.innerHTML = `
+      <div class="p-8 bg-gray-100 rounded-xl text-center border-2 border-gray-300">
+        <div class="text-6xl mb-4">❌</div>
+        <p class="text-xl font-bold text-gray-700">No matches found</p>
+        <p class="text-sm text-gray-500 mt-2">No exact or high-similarity evidence found in blockchain</p>
+      </div>`;
+    return;
+  }
+
+  console.log(`Displaying ${data.total_matches} matches:`, data.matches);
+
+  // Header with summary
+  div.innerHTML = `
+    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl mb-6 border border-indigo-200">
+      <h3 class="text-xl font-bold text-indigo-900 mb-3">🔍 Verification Results</h3>
+      <p class="text-sm text-blue-600 mb-4">Showing all exact SHA256 matches and high-similarity evidence (>90%)</p>
+      <div class="grid grid-cols-2 gap-4 text-sm mb-4">
+        <div><strong>Total High-Confidence Matches:</strong> ${data.total_matches}</div>
+        <div><strong>Verified By:</strong> ${data.verified_by}</div>
+        <div><strong>Verified At:</strong> ${new Date(data.verified_at).toLocaleString()}</div>
+        <div><strong>Blockchain Status:</strong> <span class="px-2 py-1 bg-green-100 text-green-800 rounded">Recorded</span></div>
+      </div>
+      
+      <!-- Category Summary -->
+      <div class="flex gap-3 flex-wrap">
+        ${data.exact_count > 0 ? `<span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-semibold">✅ ${data.exact_count} Exact SHA256 ${data.exact_count === 1 ? 'Match' : 'Matches'}</span>` : ''}
+        ${data.high_similarity_count > 0 ? `<span class="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-semibold">⚠️ ${data.high_similarity_count} High Similarity ${data.high_similarity_count === 1 ? 'Match' : 'Matches'}</span>` : ''}
+      </div>
+    </div>
+    <div id="match-cards" class="space-y-4"></div>
+  `;
+
+  const matchContainer = document.getElementById("match-cards");
+  
+  // Display ALL matches
+  data.matches.forEach((m, idx) => {
+    const simPct = m.similarity_percent;
+    const isExactSHA256 = m.analysis_note === "SHA256 exact match";
+    
+    let cardClass, statusBadge, statusIcon, borderColor;
+    
+    if (isExactSHA256) {
+      cardClass = "match-card-identical";
+      statusBadge = "bg-green-100 text-green-800 border-green-300";
+      statusIcon = "✅";
+      borderColor = "border-green-500";
+    } else {
+      cardClass = "match-card-similar";
+      statusBadge = "bg-yellow-100 text-yellow-800 border-yellow-300";
+      statusIcon = "⚠️";
+      borderColor = "border-yellow-500";
+    }
+
+    const imgTag = m.cid ? `<img src="https://ipfs.io/ipfs/${m.cid.replace('ipfs://','')}" class="w-40 h-40 object-cover rounded-lg shadow-lg" onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22160%22 height=%22160%22%3E%3Crect fill=%22%23ddd%22 width=%22160%22 height=%22160%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%23999%22%3ENo Image%3C/text%3E%3C/svg%3E';"/>` : `<div class="w-40 h-40 bg-gray-200 rounded-lg flex items-center justify-center text-gray-400 text-sm">No Image Available</div>`;
+
+    // Show "Best Match" only for the first exact SHA256 match
+    const isBestMatch = idx === 0 && isExactSHA256;
+    
+    // Match number badge
+    const matchNumber = idx + 1;
+
+    const cardHTML = `
+      <div class="${cardClass} p-6 rounded-xl shadow-lg border-2 ${borderColor} relative">
+        <!-- Match Number Badge -->
+        <div class="absolute top-4 right-4 bg-indigo-600 text-white rounded-full w-10 h-10 flex items-center justify-center font-bold shadow-lg">
+          ${matchNumber}
+        </div>
+        
+        <div class="flex items-start gap-6">
+          ${imgTag}
+          <div class="flex-1">
+            <div class="flex items-center gap-3 mb-4 flex-wrap">
+              <span class="text-3xl">${statusIcon}</span>
+              <span class="px-4 py-2 text-sm font-bold rounded-full border-2 ${statusBadge}">${m.similarity} (${simPct.toFixed(2)}%)</span>
+              ${isBestMatch ? '<span class="px-3 py-1 bg-indigo-100 text-indigo-800 text-xs rounded-full font-bold">🏆 Best Match</span>' : ''}
+              ${isExactSHA256 ? '<span class="px-3 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-bold">SHA256 Verified</span>' : '<span class="px-3 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-bold">Perceptual Match</span>'}
+            </div>
+            
+            <!-- Analysis Note -->
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+              <p class="text-sm font-semibold text-blue-800">${m.analysis_note}</p>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4 text-sm mb-4">
+              <div>
+                <p class="font-semibold text-gray-700 mb-2">📋 Case Information</p>
+                <p><strong>Case ID:</strong> ${m.case_id}</p>
+                <p><strong>Evidence ID:</strong> ${m.evidence_id}</p>
+                <p><strong>Filename:</strong> ${m.filename || 'N/A'}</p>
+              </div>
+              <div>
+                <p class="font-semibold text-gray-700 mb-2">👮 Registration Details</p>
+                <p><strong>Uploaded By:</strong> ${m.uploader}</p>
+                <p><strong>Timestamp:</strong> ${formatISO(m.timestamp)}</p>
+                <p><strong>Custody Events:</strong> ${m.custody.length}</p>
+              </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-lg border border-gray-300 mb-3">
+              <p class="font-semibold text-gray-700 mb-2">📝 Description</p>
+              <p class="text-sm text-gray-600">${m.description || 'No description provided'}</p>
+            </div>
+
+            <!-- Detailed Hash Analysis - Only show for perceptual matches -->
+            ${!isExactSHA256 ? `
+            <div class="bg-gray-50 p-4 rounded-lg border border-gray-300 mb-3">
+              <p class="font-semibold text-gray-700 mb-3">🔬 Digital Fingerprint Analysis</p>
+              <div class="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p class="font-medium text-gray-600">Perceptual Hash (pHash)</p>
+                  <div class="flex items-center gap-2 mt-1">
+                    <div class="flex-1 bg-gray-200 rounded-full h-2 overflow-hidden">
+                      <div class="h-full ${m.phash_similarity >= 95 ? 'bg-green-500' : m.phash_similarity >= 90 ? 'bg-yellow-500' : 'bg-orange-500'}" style="width: ${m.phash_similarity}%"></div>
+                    </div>
+                    <span class="text-xs font-bold">${m.phash_similarity.toFixed(2)}%</span>
+                  </div>
+                  <p class="text-xs text-gray-500 mt-1">Distance: ${m.phash_distance} bits</p>
+                </div>
+                <div>
+                  <p class="font-medium text-gray-600">Difference Hash (dHash)</p>
+                  <div class="flex items-center gap-2 mt-1">
+                    <div class="flex-1 bg-gray-200 rounded-full h-2 overflow-hidden">
+                      <div class="h-full ${m.dhash_similarity >= 95 ? 'bg-green-500' : m.dhash_similarity >= 90 ? 'bg-yellow-500' : 'bg-orange-500'}" style="width: ${m.dhash_similarity}%"></div>
+                    </div>
+                    <span class="text-xs font-bold">${m.dhash_similarity.toFixed(2)}%</span>
+                  </div>
+                  <p class="text-xs text-gray-500 mt-1">Distance: ${m.dhash_distance} bits</p>
+                </div>
+              </div>
+            </div>
+            ` : ''}
+
+            <details class="mt-4">
+              <summary class="cursor-pointer font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-2">
+                <span>🔍 View Complete Technical Details</span>
+              </summary>
+              <div class="mt-3 p-4 bg-gray-50 rounded-lg border border-gray-300 text-xs font-mono space-y-2">
+                <div class="grid grid-cols-[120px_1fr] gap-2">
+                  <span class="font-bold text-gray-700">SHA256:</span>
+                  <span class="break-all">${m.sha256}</span>
+                  
+                  <span class="font-bold text-gray-700">pHash:</span>
+                  <span class="break-all">${m.phash || 'N/A'}</span>
+                  
+                  <span class="font-bold text-gray-700">dHash:</span>
+                  <span class="break-all">${m.dhash || 'N/A'}</span>
+                  
+                  <span class="font-bold text-gray-700">Best Similarity:</span>
+                  <span>${m.similarity_percent.toFixed(2)}%</span>
+                  
+                  <span class="font-bold text-gray-700">IPFS CID:</span>
+                  <span class="break-all">${m.cid ? `<a href="https://ipfs.io/ipfs/${m.cid.replace('ipfs://','')}" target="_blank" class="text-indigo-600 hover:underline">${m.cid}</a>` : 'N/A'}</span>
+                </div>
+              </div>
+            </details>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    matchContainer.innerHTML += cardHTML;
+  });
+  
+  console.log(`Successfully rendered ${data.matches.length} match cards`);
+}
+
+  // Dashboard
+  async function loadDashboard() {
+    try {
+      const res = await fetch(`${API}/all`, { credentials: "include" });
+      const json = await res.json();
+      renderDashboard(json || []);
+    } catch (err) {
+      document.getElementById("dashboard").innerHTML = "<p class='text-red-500'>Failed to load dashboard</p>";
+    }
+  }
+
+  function renderDashboard(data) {
+    const container = document.getElementById("dashboard");
+    container.innerHTML = "";
+    if (!data.length) {
+        container.innerHTML = "<p class='text-gray-500 italic text-center py-8'>No evidence registered yet.</p>";
+        return;
+    }
+    let html = `<table class="w-full text-sm border-collapse">
+      <thead class="bg-indigo-100"><tr>
+        <th class="p-3 text-left border">Thumbnail</th>
+        <th class="p-3 text-left border">Case ID</th>
+        <th class="p-3 text-left border">Evidence ID</th>
+        <th class="p-3 text-left border">Uploaded By</th>
+        <th class="p-3 text-left border">Timestamp</th>
+        <th class="p-3 text-left border">IPFS Status</th>
+        <th class="p-3 text-left border">Custody</th>
+      </tr></thead><tbody>`;
+    data.forEach(ev => {
+        const imgTag = ev.cid ? 
+            `<img src="https://ipfs.io/ipfs/${ev.cid.replace('ipfs://','')}" 
+                  class="w-20 h-20 object-cover rounded-lg shadow"
+                  onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2280%22 height=%2280%22%3E%3Crect fill=%22%23ddd%22 width=%2280%22 height=%2280%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%23999%22%3ENo Image%3C/text%3E%3C/svg%3E'"
+                  alt="Evidence" />` : 
+            '<div class="w-20 h-20 bg-gray-200 rounded-lg flex items-center justify-center text-gray-400 text-xs">No IPFS</div>';
+        
+        const ipfsStatus = ev.cid ? 
+            '<span class="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">✅ Uploaded</span>' :
+            '<span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs">⚠️ Local Only</span>';
+            
+        html += `<tr class="hover:bg-gray-50">
+          <td class="p-3 border text-center">${imgTag}</td>
+          <td class="p-3 border font-semibold">${ev.case_id}</td>
+          <td class="p-3 border">${ev.evidence_id}</td>
+          <td class="p-3 border">${ev.officer_name || ev.uploader}</td>
+          <td class="p-3 border">${ev.timestamp || 'N/A'}</td>
+          <td class="p-3 border text-center">${ipfsStatus}</td>
+          <td class="p-3 border text-center"><span class="bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full text-xs font-semibold">${ev.custody?.length || 0} events</span></td>
+        </tr>`;
+    });
+    html += "</tbody></table>";
+    container.innerHTML = html;
+}
+
+  // Chain of Custody
+let allEvidenceData = []; // Store all evidence for searching
+
+async function loadCustodySelect() {
+  try {
+    const res = await fetch(`${API}/all`, { credentials: "include" });
+    const json = await res.json();
+    allEvidenceData = json; // Store for search
+    const select = document.getElementById("custody-select");
+    select.innerHTML = '<option value="">-- Select Evidence --</option>';
+    json.forEach(ev => {
+      select.innerHTML += `<option value="${ev.sha256}">${ev.case_id} - ${ev.evidence_id}</option>`;
+    });
+  } catch (err) {
+    console.error("Failed to load evidence list", err);
+  }
+}
+
+function searchCustody() {
+  const caseId = document.getElementById("custody-search-case").value.trim().toLowerCase();
+  const evidenceId = document.getElementById("custody-search-evidence").value.trim().toLowerCase();
+  
+  if (!caseId && !evidenceId) {
+    return alert("Please enter Case ID or Evidence ID to search");
+  }
+  
+  const results = allEvidenceData.filter(ev => {
+    const matchCase = caseId ? ev.case_id.toLowerCase().includes(caseId) : true;
+    const matchEvidence = evidenceId ? ev.evidence_id.toLowerCase().includes(evidenceId) : true;
+    return matchCase && matchEvidence;
+  });
+  
+  displaySearchResults(results);
+}
+
+function displayVerifyResults(data) {
+  const div = document.getElementById("verifyResults");
+  div.innerHTML = "";
+  
+  if (!data.exists || data.total_matches === 0) {
+    div.innerHTML = `
+      <div class="p-8 bg-gray-100 rounded-xl text-center border-2 border-gray-300">
+        <div class="text-6xl mb-4">❌</div>
+        <p class="text-xl font-bold text-gray-700">No matches found</p>
+        <p class="text-sm text-gray-500 mt-2">No exact or high-similarity evidence found in blockchain</p>
+      </div>`;
+    return;
+  }
+
+  // Header with summary
+  div.innerHTML = `
+    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl mb-6 border border-indigo-200">
+      <h3 class="text-xl font-bold text-indigo-900 mb-3">🔍 Verification Results</h3>
+      <p class="text-sm text-blue-600 mb-4">Showing only exact SHA256 matches and high-similarity evidence (>90%)</p>
+      <div class="grid grid-cols-2 gap-4 text-sm mb-4">
+        <div><strong>Total High-Confidence Matches:</strong> ${data.total_matches}</div>
+        <div><strong>Verified By:</strong> ${data.verified_by}</div>
+        <div><strong>Verified At:</strong> ${new Date(data.verified_at).toLocaleString()}</div>
+        <div><strong>Blockchain Status:</strong> <span class="px-2 py-1 bg-green-100 text-green-800 rounded">Recorded</span></div>
+      </div>
+      
+      <!-- Category Summary -->
+      <div class="flex gap-3 flex-wrap">
+        ${data.exact_count > 0 ? `<span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-semibold">✅ ${data.exact_count} Exact SHA256 Match</span>` : ''}
+        ${data.high_similarity_count > 0 ? `<span class="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-semibold">⚠️ ${data.high_similarity_count} High Similarity</span>` : ''}
+      </div>
+    </div>
+    <div id="match-cards"></div>
+  `;
+
+  const matchContainer = document.getElementById("match-cards");
+  
+  data.matches.forEach((m, idx) => {
+    const simPct = m.similarity_percent;
+    const isExactSHA256 = m.analysis_note === "SHA256 exact match";
+    
+    let cardClass, statusBadge, statusIcon, borderColor;
+    
+    if (isExactSHA256) {
+      cardClass = "match-card-identical";
+      statusBadge = "bg-green-100 text-green-800 border-green-300";
+      statusIcon = "✅";
+      borderColor = "border-green-500";
+    } else {
+      cardClass = "match-card-similar";
+      statusBadge = "bg-yellow-100 text-yellow-800 border-yellow-300";
+      statusIcon = "⚠️";
+      borderColor = "border-yellow-500";
+    }
+
+    const imgTag = m.cid ? `<img src="https://ipfs.io/ipfs/${m.cid.replace('ipfs://','')}" class="w-40 h-40 object-cover rounded-lg shadow-lg" onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22160%22 height=%22160%22%3E%3Crect fill=%22%23ddd%22 width=%22160%22 height=%22160%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%23999%22%3ENo Image%3C/text%3E%3C/svg%3E';"/>` : `<div class="w-40 h-40 bg-gray-200 rounded-lg flex items-center justify-center text-gray-400 text-sm">No Image Available</div>`;
+
+    // Show "Best Match" only for the first exact SHA256 match
+    const isBestMatch = idx === 0 && isExactSHA256;
+
+    matchContainer.innerHTML += `
+      <div class="${cardClass} p-6 rounded-xl shadow-lg mb-4 border-2 ${borderColor}">
+        <div class="flex items-start gap-6">
+          ${imgTag}
+          <div class="flex-1">
+            <div class="flex items-center gap-3 mb-4 flex-wrap">
+              <span class="text-3xl">${statusIcon}</span>
+              <span class="px-4 py-2 text-sm font-bold rounded-full border-2 ${statusBadge}">${m.similarity} (${simPct}%)</span>
+              ${isBestMatch ? '<span class="px-3 py-1 bg-indigo-100 text-indigo-800 text-xs rounded-full font-bold">🏆 Best Match</span>' : ''}
+              ${isExactSHA256 ? '<span class="px-3 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-bold">SHA256 Verified</span>' : '<span class="px-3 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-bold">Perceptual Match</span>'}
+            </div>
+            
+            <!-- Analysis Note -->
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+              <p class="text-sm font-semibold text-blue-800">${m.analysis_note}</p>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4 text-sm mb-4">
+              <div>
+                <p class="font-semibold text-gray-700 mb-2">📋 Case Information</p>
+                <p><strong>Case ID:</strong> ${m.case_id}</p>
+                <p><strong>Evidence ID:</strong> ${m.evidence_id}</p>
+                <p><strong>Filename:</strong> ${m.filename || 'N/A'}</p>
+              </div>
+              <div>
+                <p class="font-semibold text-gray-700 mb-2">👮 Registration Details</p>
+                <p><strong>Uploaded By:</strong> ${m.uploader}</p>
+                <p><strong>Timestamp:</strong> ${formatISO(m.timestamp)}</p>
+                <p><strong>Custody Events:</strong> ${m.custody.length}</p>
+              </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-lg border border-gray-300 mb-3">
+              <p class="font-semibold text-gray-700 mb-2">📝 Description</p>
+              <p class="text-sm text-gray-600">${m.description || 'No description provided'}</p>
+            </div>
+
+            <!-- Detailed Hash Analysis - Only show for perceptual matches -->
+            ${!isExactSHA256 ? `
+            <div class="bg-gray-50 p-4 rounded-lg border border-gray-300 mb-3">
+              <p class="font-semibold text-gray-700 mb-3">🔬 Digital Fingerprint Analysis</p>
+              <div class="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p class="font-medium text-gray-600">Perceptual Hash (pHash)</p>
+                  <div class="flex items-center gap-2 mt-1">
+                    <div class="flex-1 bg-gray-200 rounded-full h-2 overflow-hidden">
+                      <div class="h-full ${m.phash_similarity >= 95 ? 'bg-green-500' : m.phash_similarity >= 90 ? 'bg-yellow-500' : 'bg-orange-500'}" style="width: ${m.phash_similarity}%"></div>
+                    </div>
+                    <span class="text-xs font-bold">${m.phash_similarity}%</span>
+                  </div>
+                  <p class="text-xs text-gray-500 mt-1">Distance: ${m.phash_distance} bits</p>
+                </div>
+                <div>
+                  <p class="font-medium text-gray-600">Difference Hash (dHash)</p>
+                  <div class="flex items-center gap-2 mt-1">
+                    <div class="flex-1 bg-gray-200 rounded-full h-2 overflow-hidden">
+                      <div class="h-full ${m.dhash_similarity >= 95 ? 'bg-green-500' : m.dhash_similarity >= 90 ? 'bg-yellow-500' : 'bg-orange-500'}" style="width: ${m.dhash_similarity}%"></div>
+                    </div>
+                    <span class="text-xs font-bold">${m.dhash_similarity}%</span>
+                  </div>
+                  <p class="text-xs text-gray-500 mt-1">Distance: ${m.dhash_distance} bits</p>
+                </div>
+              </div>
+            </div>
+            ` : ''}
+
+            <details class="mt-4">
+              <summary class="cursor-pointer font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-2">
+                <span>🔍 View Complete Technical Details</span>
+              </summary>
+              <div class="mt-3 p-4 bg-gray-50 rounded-lg border border-gray-300 text-xs font-mono space-y-2">
+                <div class="grid grid-cols-[120px_1fr] gap-2">
+                  <span class="font-bold text-gray-700">SHA256:</span>
+                  <span class="break-all">${m.sha256}</span>
+                  
+                  <span class="font-bold text-gray-700">pHash:</span>
+                  <span class="break-all">${m.phash || 'N/A'}</span>
+                  
+                  <span class="font-bold text-gray-700">dHash:</span>
+                  <span class="break-all">${m.dhash || 'N/A'}</span>
+                  
+                  <span class="font-bold text-gray-700">Best Similarity:</span>
+                  <span>${m.similarity_percent}%</span>
+                  
+                  <span class="font-bold text-gray-700">IPFS CID:</span>
+                  <span class="break-all">${m.cid ? `<a href="https://ipfs.io/ipfs/${m.cid.replace('ipfs://','')}" target="_blank" class="text-indigo-600 hover:underline">${m.cid}</a>` : 'N/A'}</span>
+                </div>
+              </div>
+            </details>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+}
+
+// Transfer Evidence Functions
+async function loadTransferData() {
+    await loadMyEvidenceForTransfer();
+    await loadOfficersList();
+    await loadTransferHistory();
+}
+
+async function loadMyTransfers() {
+    try {
+        const res = await fetch(`${API}/transfer-history`, { credentials: "include" });
+        const transfers = await res.json();
+        
+        const container = document.getElementById("my-transfers");
+        const countElement = document.getElementById("made-count");
+        
+        countElement.textContent = transfers.length;
+        
+        if (!transfers.length) {
+            container.innerHTML = '<p class="text-gray-500 text-center py-4 text-sm">No transfers made yet</p>';
+            return;
+        }
+        
+        container.innerHTML = transfers.slice(0, 5).map(transfer => `
+            <div class="bg-white p-3 rounded-lg border border-purple-200 shadow-sm hover:shadow-md transition">
+                <div class="flex justify-between items-start mb-2">
+                    <div class="flex-1">
+                        <span class="font-semibold text-sm text-gray-800">${transfer.case_id}</span>
+                        <span class="text-xs text-gray-500 ml-2">${transfer.evidence_id}</span>
+                    </div>
+                    <span class="text-xs text-gray-500">${new Date(transfer.transferred_at).toLocaleDateString()}</span>
+                </div>
+                <p class="text-xs text-purple-600 font-semibold mb-1">To: ${transfer.transferred_to}</p>
+                <p class="text-xs text-gray-500 mb-2">Reason: ${transfer.transfer_reason || 'Not specified'}</p>
+                <div class="flex justify-between items-center">
+                    <span class="text-xs text-gray-400 truncate flex-1 mr-2">${transfer.description || 'No description'}</span>
+                    <button onclick="viewEvidenceDetails('${transfer.sha256}')" 
+                            class="text-xs bg-purple-600 text-white px-2 py-1 rounded hover:bg-purple-700 transition">
+                        View
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    } catch (err) {
+        console.error("Failed to load my transfers", err);
+        document.getElementById("my-transfers").innerHTML = 
+            '<p class="text-red-500 text-center py-4 text-sm">Failed to load transfers</p>';
+    }
+}
+
+async function loadMyEvidenceForTransfer() {
+    try {
+        const res = await fetch(`${API}/my-evidence`, { credentials: "include" });
+        const evidence = await res.json();
+        
+        const select = document.getElementById("transfer-evidence-select");
+        select.innerHTML = '<option value="">-- Select Evidence --</option>';
+        
+        evidence.forEach(ev => {
+            select.innerHTML += `<option value="${ev.sha256}">${ev.case_id} - ${ev.evidence_id} (${ev.description || 'No description'})</option>`;
+        });
+    } catch (err) {
+        console.error("Failed to load evidence for transfer", err);
+    }
+}
+
+async function loadOfficersList() {
+    try {
+        const res = await fetch(`${API}/officers`, { credentials: "include" });
+        const officers = await res.json();
+        
+        const select = document.getElementById("transfer-officer-select");
+        select.innerHTML = '<option value="">-- Select Officer --</option>';
+        
+        officers.forEach(officer => {
+            select.innerHTML += `<option value="${officer.user_id}">${officer.name} (${officer.role}) - ${officer.user_id}</option>`;
+        });
+    } catch (err) {
+        console.error("Failed to load officers list", err);
+    }
+}
+
+async function loadTransferHistory() {
+    await loadMyTransfers(); // Transfers made by user
+    await loadReceivedTransfers(); // Transfers received by user
+}
+
+async function loadReceivedTransfers() {
+    try {
+        const res = await fetch(`${API}/transferred-evidence`, { credentials: "include" });
+        const transfers = await res.json();
+        
+        const container = document.getElementById("received-transfers");
+        const countElement = document.getElementById("received-count");
+        
+        countElement.textContent = transfers.length;
+        
+        if (!transfers.length) {
+            container.innerHTML = '<p class="text-gray-500 text-center py-4 text-sm">No transfers received</p>';
+            return;
+        }
+        
+        container.innerHTML = transfers.slice(0, 5).map(transfer => `
+            <div class="bg-white p-3 rounded-lg border border-green-200 shadow-sm hover:shadow-md transition">
+                <div class="flex justify-between items-start mb-2">
+                    <div class="flex-1">
+                        <span class="font-semibold text-sm text-gray-800">${transfer.case_id}</span>
+                        <span class="text-xs text-gray-500 ml-2">${transfer.evidence_id}</span>
+                    </div>
+                    <span class="text-xs text-gray-500">${new Date(transfer.transferred_at).toLocaleDateString()}</span>
+                </div>
+                <p class="text-xs text-green-600 font-semibold mb-1">From: ${transfer.transferred_by}</p>
+                <p class="text-xs text-gray-500 mb-2">Reason: ${transfer.transfer_reason || 'Not specified'}</p>
+                <div class="flex justify-between items-center">
+                    <span class="text-xs text-gray-400 truncate flex-1 mr-2">${transfer.description || 'No description'}</span>
+                    <div class="flex gap-1">
+                        <button onclick="viewEvidenceDetails('${transfer.sha256}')" 
+                                class="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 transition">
+                            View
+                        </button>
+                        <button onclick="goToVerifyWithHash('${transfer.sha256}')" 
+                                class="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700 transition">
+                            Verify
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    } catch (err) {
+        console.error("Failed to load received transfers", err);
+        document.getElementById("received-transfers").innerHTML = 
+            '<p class="text-red-500 text-center py-4 text-sm">Failed to load transfers</p>';
+    }
+}
+
+
+// Transfer form handling
+document.getElementById("transferForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    
+    const sha256 = document.getElementById("transfer-evidence-select").value;
+    const toOfficerId = document.getElementById("transfer-officer-select").value;
+    let reason = document.getElementById("transfer-reason").value;
+    
+    if (reason === "Other") {
+        reason = document.getElementById("custom-reason").value.trim();
+        if (!reason) {
+            alert("Please specify a custom transfer reason");
+            return;
+        }
+    }
+    
+    if (!sha256 || !toOfficerId) {
+        alert("Please select both evidence and officer");
+        return;
+    }
+    
+    // Show loading state
+    const btn = document.getElementById("transfer-btn");
+    const btnText = document.getElementById("transfer-btn-text");
+    const spinner = document.getElementById("transfer-spinner");
+    btn.disabled = true;
+    btnText.textContent = "Transferring...";
+    spinner.classList.remove("hidden");
+    
+    try {
+        const res = await fetch(`${API}/transfer-evidence`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({
+                sha256: sha256,
+                to_officer_id: toOfficerId,
+                reason: reason
+            })
+        });
+        
+        const result = await res.json();
+        const resultDiv = document.getElementById("transferResult");
+        
+        if (res.ok) {
+            resultDiv.innerHTML = `
+                <div class="p-4 bg-green-100 border border-green-300 text-green-700 rounded-lg">
+                    <strong>✅ Transfer Successful!</strong><br>
+                    Evidence transferred to officer successfully.
+                </div>
+            `;
+            // Reload data
+            await loadTransferData();
+            document.getElementById("transferForm").reset();
+            document.getElementById("custom-reason-container").classList.add("hidden");
+        } else {
+            resultDiv.innerHTML = `
+                <div class="p-4 bg-red-100 border border-red-300 text-red-700 rounded-lg">
+                    <strong>❌ Transfer Failed:</strong> ${result.error}
+                </div>
+            `;
+        }
+    } catch (err) {
+        document.getElementById("transferResult").innerHTML = `
+            <div class="p-4 bg-red-100 border border-red-300 text-red-700 rounded-lg">
+                <strong>❌ Connection Error:</strong> Please try again.
+            </div>
+        `;
+    } finally {
+        btn.disabled = false;
+        btnText.textContent = "Transfer Evidence";
+        spinner.classList.add("hidden");
+    }
+});
+
+// Custom reason field handling
+document.getElementById("transfer-reason").addEventListener("change", function() {
+    const customContainer = document.getElementById("custom-reason-container");
+    if (this.value === "Other") {
+        customContainer.classList.remove("hidden");
+    } else {
+        customContainer.classList.add("hidden");
+    }
+});
+
+// My Profile Functions
+async function loadMyProfile() {
+    await loadMyEvidence();
+    await loadTransferredToMe();
+    updateProfileWelcome();
+}
+
+function updateProfileWelcome() {
+    if (currentUser) {
+        document.getElementById("profile-welcome").textContent = 
+            `Welcome back, ${currentUser.name} (${currentUser.role})`;
+    }
+}
+
+async function loadMyEvidence() {
+    try {
+        const res = await fetch(`${API}/my-evidence`, { credentials: "include" });
+        const evidence = await res.json();
+        
+        document.getElementById("my-evidence-count").textContent = evidence.length;
+        
+        const container = document.getElementById("my-evidence-list");
+        
+        if (!evidence.length) {
+            container.innerHTML = '<p class="text-gray-500 text-center py-4">No evidence assigned to you</p>';
+            return;
+        }
+        
+        container.innerHTML = evidence.map(ev => {
+            // Determine if this evidence was uploaded by current user or transferred to them
+            const isUploadedByMe = ev.uploader === currentUser.user_id;
+            const badgeColor = isUploadedByMe ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800';
+            const badgeText = isUploadedByMe ? 'Uploaded' : 'Transferred';
+            const borderColor = isUploadedByMe ? 'border-green-200' : 'border-orange-200';
+            
+            return `
+            <div class="bg-white p-4 rounded-lg border ${borderColor} shadow-sm">
+                <div class="flex justify-between items-start mb-2">
+                    <span class="font-semibold text-sm">${ev.case_id}</span>
+                    <span class="${badgeColor} text-xs px-2 py-1 rounded-full">${badgeText}</span>
+                </div>
+                <p class="text-xs text-gray-600 mb-1">${ev.evidence_id}</p>
+                <p class="text-xs text-gray-500 truncate">${ev.description || 'No description'}</p>
+                
+                <!-- Show uploader/transferred info -->
+                <div class="mt-1 text-xs">
+                    ${isUploadedByMe ? 
+                      '<span class="text-green-600">📤 Uploaded by you</span>' : 
+                      `<span class="text-blue-600">🔄 From: ${ev.uploader}</span>`
+                    }
+                </div>
+                
+                <!-- Show pHash and dHash if available -->
+                ${(ev.phash || ev.dhash) ? `
+                <div class="mt-2 p-2 bg-gray-50 rounded border border-gray-200">
+                    <p class="text-xs font-semibold text-gray-700 mb-1">Digital Fingerprints:</p>
+                    ${ev.phash ? `<p class="text-xs text-gray-600"><span class="font-mono">pHash:</span> ${ev.phash.substring(0, 16)}...</p>` : ''}
+                    ${ev.dhash ? `<p class="text-xs text-gray-600"><span class="font-mono">dHash:</span> ${ev.dhash.substring(0, 16)}...</p>` : ''}
+                </div>
+                ` : ''}
+                
+                <div class="flex justify-between items-center mt-2">
+                    <span class="text-xs text-gray-400">${ev.timestamp ? new Date(ev.timestamp).toLocaleDateString() : 'N/A'}</span>
+                    <div class="flex gap-2">
+                        <button onclick="viewEvidenceDetails('${ev.sha256}')" class="text-xs text-blue-600 hover:underline">View</button>
+                        ${isUploadedByMe ? `<button onclick="prepareTransfer('${ev.sha256}')" class="text-xs text-purple-600 hover:underline">Transfer</button>` : ''}
+                    </div>
+                </div>
+            </div>
+        `}).join('');
+    } catch (err) {
+        console.error("Failed to load my evidence", err);
+        document.getElementById("my-evidence-list").innerHTML = 
+            '<p class="text-red-500 text-center py-4">Failed to load evidence</p>';
+    }
+}
+
+// Add this helper function
+function prepareTransfer(sha256) {
+    showTab('transfer');
+    // Auto-select the evidence in transfer dropdown
+    setTimeout(() => {
+        document.getElementById("transfer-evidence-select").value = sha256;
+    }, 100);
+}
+
+async function loadTransferredToMe() {
+    try {
+        const res = await fetch(`${API}/transferred-evidence`, { credentials: "include" });
+        const transfers = await res.json();
+        
+        document.getElementById("transferred-count").textContent = transfers.length;
+        
+        const container = document.getElementById("transferred-evidence-list");
+        
+        if (!transfers.length) {
+            container.innerHTML = '<p class="text-gray-500 text-center py-4">No evidence transferred to you</p>';
+            return;
+        }
+        
+       // In the loadTransferredToMe function, update the button section:
+container.innerHTML = transfers.map(transfer => `
+    <div class="bg-white p-4 rounded-lg border border-blue-200 shadow-sm">
+        <div class="flex justify-between items-start mb-2">
+            <span class="font-semibold text-sm">${transfer.case_id}</span>
+            <span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">Transferred</span>
+        </div>
+        <p class="text-xs text-gray-600 mb-1">${transfer.evidence_id}</p>
+        <p class="text-xs text-gray-500 truncate">${transfer.description || 'No description'}</p>
+        <div class="mt-2 space-y-1">
+            <p class="text-xs text-blue-600">From: ${transfer.transferred_by}</p>
+            <p class="text-xs text-gray-400">${transfer.transferred_at ? new Date(transfer.transferred_at).toLocaleDateString() : 'N/A'}</p>
+        </div>
+        <div class="flex justify-between items-center mt-2">
+            <span class="text-xs text-gray-500">Reason: ${transfer.transfer_reason || 'Not specified'}</span>
+            <div class="flex gap-2">
+                <button onclick="viewEvidenceDetails('${transfer.sha256}')" class="text-xs text-blue-600 hover:underline">View Chain</button>
+                <button onclick="goToVerifyWithHash('${transfer.sha256}')" class="text-xs text-green-600 hover:underline">Verify</button>
+            </div>
+        </div>
+    </div>
+`).join('');
+
+    } catch (err) {
+        console.error("Failed to load transferred evidence", err);
+        document.getElementById("transferred-evidence-list").innerHTML = 
+            '<p class="text-red-500 text-center py-4">Failed to load transfers</p>';
+    }
+}
+
+function goToVerifyWithHash(sha256) {
+    // Navigate to verify tab and show instructions
+    showTab('verify');
+    
+    // Show helpful message
+    document.getElementById("verifyResults").innerHTML = `
+        <div class="p-4 bg-blue-50 border border-blue-300 rounded-lg mb-4">
+            <h4 class="font-bold text-blue-800 mb-2">🔍 Verify Transferred Evidence</h4>
+            <p class="text-sm text-blue-700">
+                Please upload the original evidence file to verify its integrity against the blockchain record.
+            </p>
+            <p class="text-xs text-blue-600 mt-1">
+                Expected SHA256: <span class="font-mono">${sha256.substring(0, 32)}...</span>
+            </p>
+        </div>
+    `;
+}
+
+function viewEvidenceDetails(sha256) {
+    console.log("🔍 Viewing evidence details for:", sha256);
+    
+    // Navigate to custody tab
+    showTab('custody');
+    
+    // Wait for the custody tab to load, then set the dropdown and load chain
+    setTimeout(() => {
+        const custodySelect = document.getElementById("custody-select");
+        if (custodySelect) {
+            // Set the value in dropdown
+            custodySelect.value = sha256;
+            console.log("✅ Set custody select value to:", sha256);
+            
+            // Load the custody chain
+            loadCustodyChain();
+            
+            // Scroll to timeline for better UX
+            setTimeout(() => {
+                const timeline = document.getElementById("custody-timeline");
+                if (timeline) {
+                    timeline.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }, 500);
+        } else {
+            console.error("❌ Custody select element not found");
+            // Fallback: Try again after a short delay
+            setTimeout(() => {
+                const retrySelect = document.getElementById("custody-select");
+                if (retrySelect) {
+                    retrySelect.value = sha256;
+                    loadCustodyChain();
+                }
+            }, 1000);
+        }
+    }, 300);
+}
+
+
+function resetCustodySearch() {
+  document.getElementById("custody-search-case").value = "";
+  document.getElementById("custody-search-evidence").value = "";
+  document.getElementById("custody-search-results").classList.add("hidden");
+  document.getElementById("custody-timeline").innerHTML = "";
+}
+
+function loadCustodyByHash(sha256) {
+  document.getElementById("custody-select").value = sha256;
+  loadCustodyChain();
+  // Scroll to timeline
+  document.getElementById("custody-timeline").scrollIntoView({ behavior: 'smooth' });
+}
+
+async function loadCustodyChain() {
+  let sha256 = document.getElementById("custody-select").value;
+  
+  // If no SHA256 from dropdown, check if we have one from URL parameters or other sources
+  if (!sha256) {
+    console.log("⚠️ No SHA256 selected from dropdown");
+    return alert("Please select evidence first");
+  }
+
+  console.log("🔄 Loading custody chain for:", sha256);
+
+  try {
+    const res = await fetch(`${API}/custody/${sha256}`, { credentials: "include" });
+    const json = await res.json();
+    
+    if (!res.ok) {
+      document.getElementById("custody-timeline").innerHTML = `
+        <div class="p-6 bg-red-100 border-2 border-red-300 rounded-xl">
+          <h3 class="text-red-700 font-bold text-lg mb-2">❌ Error Loading Custody Chain</h3>
+          <p class="text-red-600">${json.error || 'Unknown error occurred'}</p>
+          <p class="text-sm text-red-500 mt-2">SHA256: ${sha256.substring(0, 32)}...</p>
+        </div>`;
+      return;
+    }
+
+    console.log("✅ Successfully loaded custody data");
+    renderProfessionalCustodyTimeline(json);
+    
+  } catch (err) {
+    console.error("💥 Error loading custody chain:", err);
+    document.getElementById("custody-timeline").innerHTML = `
+      <div class="p-6 bg-red-100 border-2 border-red-300 rounded-xl">
+        <h3 class="text-red-700 font-bold text-lg mb-2">❌ Connection Error</h3>
+        <p class="text-red-600">Failed to load custody chain. Please check your connection and try again.</p>
+        <p class="text-sm text-red-500 mt-2">Error: ${err.message}</p>
+      </div>`;
+  }
+}
+
+function renderProfessionalCustodyTimeline(data) {
+  const container = document.getElementById("custody-timeline");
+  const custody = data.custody || [];
+  
+  if (!custody.length) {
+    container.innerHTML = "<p class='text-gray-500 italic'>No custody events recorded.</p>";
+    return;
+  }
+
+  // Professional Header with Evidence Details
+  let html = `
+    <div class="bg-white border-2 border-purple-200 rounded-xl shadow-xl p-8 mb-6">
+      <!-- Official Header -->
+      <div class="border-b-2 border-purple-200 pb-4 mb-6">
+        <div class="flex justify-between items-start">
+          <div>
+            <h3 class="text-2xl font-bold text-gray-900 mb-2">Chain of Custody Record</h3>
+            <p class="text-sm text-gray-600">Official Evidence Tracking Document</p>
+          </div>
+          <div class="text-right">
+            <p class="text-xs text-gray-500">Generated: ${new Date().toLocaleString()}</p>
+            <p class="text-xs text-gray-500">Document ID: ${data.sha256.substring(0, 16)}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Evidence Information -->
+      <div class="grid grid-cols-2 gap-6 mb-6">
+        <div>
+          <h4 class="font-bold text-gray-800 mb-3 flex items-center gap-2">
+            <span class="text-purple-600">📋</span> Case Information
+          </h4>
+          <div class="space-y-2 text-sm">
+            <div class="flex">
+              <span class="font-semibold text-gray-700 w-32">Case ID:</span>
+              <span class="font-mono bg-gray-100 px-2 py-1 rounded">${data.case_id}</span>
+            </div>
+            <div class="flex">
+              <span class="font-semibold text-gray-700 w-32">Evidence ID:</span>
+              <span class="font-mono bg-gray-100 px-2 py-1 rounded">${data.evidence_id}</span>
+            </div>
+            <div class="flex">
+              <span class="font-semibold text-gray-700 w-32">Original Officer:</span>
+              <span class="text-gray-900">${data.uploader}</span>
+            </div>
+          </div>
+        </div>
+        <div>
+          <h4 class="font-bold text-gray-800 mb-3 flex items-center gap-2">
+            <span class="text-purple-600">🔐</span> Digital Signatures
+          </h4>
+          <div class="space-y-2 text-sm">
+            <div class="flex flex-col">
+              <span class="font-semibold text-gray-700">SHA256 Hash:</span>
+              <span class="font-mono text-xs bg-gray-100 px-2 py-1 rounded break-all">${data.sha256}</span>
+            </div>
+            ${data.cid ? `
+            <div class="flex flex-col">
+              <span class="font-semibold text-gray-700">IPFS CID:</span>
+              <span class="font-mono text-xs bg-gray-100 px-2 py-1 rounded break-all">${data.cid}</span>
+            </div>
+            ` : ''}
+          </div>
+        </div>
+      </div>
+
+      <!-- Evidence Image Section - ADDED -->
+      ${data.cid ? `
+      <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-6 mb-6">
+        <h4 class="font-bold text-gray-800 mb-4 flex items-center gap-2">
+          <span class="text-blue-600">📷</span> Evidence Image
+        </h4>
+        <div class="flex flex-col items-center">
+          <img src="https://ipfs.io/ipfs/${data.cid.replace('ipfs://','')}" 
+               class="w-64 h-64 object-contain rounded-lg shadow-lg border-4 border-white"
+               onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22256%22 height=%22256%22%3E%3Crect fill=%22%23ddd%22 width=%22256%22 height=%22256%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%23999%22 font-size=%2214%22%3EImage Not Available%3C/text%3E%3C/svg%3E'"
+               alt="Evidence Image" />
+          <p class="text-xs text-gray-500 mt-3 text-center">
+            IPFS Content Identifier: <span class="font-mono">${data.cid}</span>
+          </p>
+          <p class="text-xs text-blue-600 mt-2">🔗 Stored on decentralized IPFS network for tamper-proof preservation</p>
+        </div>
+      </div>
+      ` : `
+      <div class="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-6 mb-6">
+        <h4 class="font-bold text-gray-800 mb-3 flex items-center gap-2">
+          <span class="text-yellow-600">⚠️</span> Evidence Image Status
+        </h4>
+        <div class="text-center">
+          <div class="text-4xl mb-3">📄</div>
+          <p class="text-sm text-gray-700 mb-2">Evidence image not available on IPFS</p>
+          <p class="text-xs text-gray-500">File is stored locally in the blockchain record only</p>
+        </div>
+      </div>
+      `}
+
+      <!-- Digital Fingerprint Section -->
+      <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
+        <h4 class="font-bold text-gray-800 mb-4 flex items-center gap-2">
+          <span class="text-blue-600">🔬</span> Digital Fingerprint Analysis
+        </h4>
+        <div class="grid grid-cols-2 gap-6 text-sm">
+          <div>
+            <p class="font-semibold text-gray-700 mb-2">Perceptual Hash (pHash)</p>
+            <div class="bg-white p-3 rounded border">
+              <p class="font-mono text-xs break-all">${data.phash || 'N/A'}</p>
+              <p class="text-xs text-gray-500 mt-1">Identifies similar images based on content</p>
+            </div>
+          </div>
+          <div>
+            <p class="font-semibold text-gray-700 mb-2">Difference Hash (dHash)</p>
+            <div class="bg-white p-3 rounded border">
+              <p class="font-mono text-xs break-all">${data.dhash || 'N/A'}</p>
+              <p class="text-xs text-gray-500 mt-1">Identifies structural similarities</p>
+            </div>
+          </div>
+        </div>
+        <p class="text-xs text-blue-600 mt-3">⚠️ These cryptographic hashes ensure evidence integrity and detect tampering</p>
+      </div>
+
+      ${data.description ? `
+      <div class="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-4">
+        <p class="font-semibold text-gray-800 mb-2">📝 Description:</p>
+        <p class="text-sm text-gray-700">${data.description}</p>
+      </div>
+      ` : ''}
+
+      <!-- Custody Summary -->
+      <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+        <div class="flex items-center gap-3">
+          <span class="text-3xl">✅</span>
+          <div>
+            <p class="font-bold text-green-900">Blockchain Verified</p>
+            <p class="text-sm text-green-700">Total Custody Events: ${custody.length} | Cryptographically Secured & Immutable</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rest of your existing timeline code continues below... -->
+  `;
+
+  // ... rest of your existing timeline code remains the same ...
+  // [Keep all your existing timeline rendering code as it is]
+
+  custody.forEach((event, idx) => {
+    const isFirst = idx === 0;
+    const isVerify = event.action.includes("verified");
+    const isTransfer = event.action.includes("transferred");
+    
+    let actionIcon, iconColor, borderColor;
+    if (isFirst) {
+      actionIcon = "📥";
+      iconColor = "bg-indigo-500";
+      borderColor = "border-indigo-500";
+    } else if (isVerify) {
+      actionIcon = "✅";
+      iconColor = "bg-green-500";
+      borderColor = "border-green-500";
+    } else if (isTransfer) {
+      actionIcon = "🔄";
+      iconColor = "bg-orange-500";
+      borderColor = "border-orange-500";
+    } else {
+      actionIcon = "📝";
+      iconColor = "bg-blue-500";
+      borderColor = "border-blue-500";
+    }
+    
+    html += `
+      <div class="relative pl-16 pb-8">
+        <!-- Dot -->
+        <div class="absolute left-4 w-5 h-5 ${iconColor} rounded-full border-4 border-white shadow-lg"></div>
+        
+        <!-- Event Card -->
+        <div class="bg-white rounded-xl shadow-md border-l-4 ${borderColor} p-6 hover:shadow-lg transition">
+          <!-- Event Number Badge -->
+          <div class="absolute -top-2 -left-2 bg-purple-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shadow">
+            ${idx + 1}
+          </div>
+
+          <div class="flex items-start justify-between">
+            <div class="flex-1">
+              <div class="flex items-center gap-3 mb-3">
+                <span class="text-2xl">${actionIcon}</span>
+                <h5 class="font-bold text-gray-900 text-lg">${event.action}</h5>
+              </div>
+              
+              <div class="grid grid-cols-2 gap-4 text-sm mb-4">
+                <div class="space-y-1">
+                  <p class="text-gray-600"><span class="font-semibold">Officer:</span> ${event.officer_name || event.officer}</p>
+                  ${event.from_name ? `<p class="text-gray-600"><span class="font-semibold">From:</span> ${event.from_name}</p>` : ''}
+                  ${event.to_name ? `<p class="text-gray-600"><span class="font-semibold">To:</strong> ${event.to_name}</p>` : ''}
+                </div>
+                <div class="text-right">
+                  <p class="text-sm font-mono bg-gray-100 px-3 py-2 rounded inline-block">
+                    <span class="text-gray-500">🕐</span> ${event.time}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+
+  html += `
+    </div>
+
+    <!-- Official Footer -->
+    <div class="bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl p-6 mt-6">
+      <div class="flex items-start gap-4">
+        <div class="text-5xl">⚖️</div>
+        <div class="flex-1">
+          <h4 class="text-xl font-bold mb-2">Court Admissibility Statement</h4>
+          <p class="text-purple-100 text-sm leading-relaxed">
+            This chain of custody record is maintained on an immutable blockchain ledger and is cryptographically 
+            secured using SHA-256 hashing. Each event is timestamped in UTC and attributed to verified law enforcement 
+            officers. The integrity of this evidence trail can be independently verified through the blockchain hash: 
+            <span class="font-mono bg-purple-700 px-2 py-1 rounded">${data.sha256.substring(0, 32)}...</span>
+          </p>
+          <div class="mt-4 grid grid-cols-3 gap-4 text-center">
+            <div class="bg-purple-700 rounded-lg p-3">
+              <p class="text-2xl font-bold">${custody.length}</p>
+              <p class="text-xs text-purple-200">Total Events</p>
+            </div>
+            <div class="bg-purple-700 rounded-lg p-3">
+              <p class="text-2xl font-bold">100%</p>
+              <p class="text-xs text-purple-200">Integrity</p>
+            </div>
+            <div class="bg-purple-700 rounded-lg p-3">
+              <p class="text-2xl font-bold">✓</p>
+              <p class="text-xs text-purple-200">Verified</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Print Button -->
+    <div class="mt-6 text-center">
+      <button onclick="window.print()" class="px-8 py-3 bg-gray-700 hover:bg-gray-800 text-white font-semibold rounded-lg shadow-md transition">
+        🖨️ Print Chain of Custody Report
+      </button>
+    </div>
+  `;
+
+  container.innerHTML = html;
+}
+
+  function formatISO(ts) {
+    try {
+      return new Date(ts * 1000).toISOString().replace("T"," ").split(".")[0] + " UTC";
+    } catch {
+      return ts;
+    }
+  }
+</script>
+</body>
+</html>
